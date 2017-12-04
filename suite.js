@@ -5,6 +5,7 @@ export default function suite(options) {
 
 	// configure
 	const initialSupply = options.initialSupply || new web3.BigNumber(0)
+	const initialBalances = options.initialBalances || []
 	const createToken = options.token
 	const purchase = function (to, amount) { return options.purchase(token, to, amount) }
 
@@ -38,6 +39,27 @@ export default function suite(options) {
 
 				await purchase(bob, 3)
 				expect(await token.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(6))
+			})
+		})
+
+		describe('balanceOf(_owner)', function () {
+			it('should have correct initial balances', async function () {
+				for (let i = 0; i < initialBalances.length; i++) {
+					let address = initialBalances[i][0]
+					let balance = initialBalances[i][1]
+					expect(await token.balanceOf.call(address)).to.be.bignumber.equal(balance)
+				}
+			})
+
+			it('should return the correct balances', async function () {
+				await purchase(alice, 1)
+				expect(await token.balanceOf.call(alice)).to.be.bignumber.equal(1)
+
+				await purchase(alice, 2)
+				expect(await token.balanceOf.call(alice)).to.be.bignumber.equal(3)
+
+				await purchase(bob, 3)
+				expect(await token.balanceOf.call(bob)).to.be.bignumber.equal(3)
 			})
 		})
 	})
