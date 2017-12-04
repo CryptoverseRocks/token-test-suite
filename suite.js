@@ -20,6 +20,7 @@ export default function suite(options) {
 	// name the accounts
 	const alice = accounts[1]
 	const bob = accounts[2]
+	const charles = accounts[3]
 
 	let token = null
 
@@ -63,6 +64,45 @@ export default function suite(options) {
 
 				await purchase(bob, 3)
 				expect(await token.balanceOf.call(bob)).to.be.bignumber.equal(3)
+			})
+		})
+
+		describe('allowance(_owner, _spender)', function () {
+			it('should have correct initial allowance', async function () {
+				for (let i = 0; i < initialAllowances.length; i++) {
+					let owner = initialAllowances[i][0]
+					let spender = initialAllowances[i][1]
+					let expectedAllowance = initialAllowances[i][2]
+					expect(await token.allowance.call(owner, spender)).to.be.bignumber.equal(expectedAllowance)
+				}
+			})
+
+			let describeAllowance = function (name, from, to) {
+				describe('when ' + name, function () {
+					it('should return the correct allowance', async function () {
+						await token.approve(to, 1, { from: from })
+						expect(await token.allowance.call(from, to)).to.be.bignumber.equal(1)
+					})
+				})
+			}
+
+			describeAllowance('_owner != _spender', alice, bob)
+			describeAllowance('_owner == _spender', alice, alice)
+
+			it('should return the correct allowance', async function () {
+				await token.approve(bob, 1, { from: alice })
+				await token.approve(charles, 2, { from: alice })
+				await token.approve(charles, 3, { from: bob })
+				await token.approve(alice, 4, { from: bob })
+				await token.approve(alice, 5, { from: charles })
+				await token.approve(bob, 6, { from: charles })
+
+				expect(await token.allowance.call(alice, bob)).to.be.bignumber.equal(1)
+				expect(await token.allowance.call(alice, charles)).to.be.bignumber.equal(2)
+				expect(await token.allowance.call(bob, charles)).to.be.bignumber.equal(3)
+				expect(await token.allowance.call(bob, alice)).to.be.bignumber.equal(4)
+				expect(await token.allowance.call(charles, alice)).to.be.bignumber.equal(5)
+				expect(await token.allowance.call(charles, bob)).to.be.bignumber.equal(6)
 			})
 		})
 
