@@ -8,6 +8,7 @@ export default function suite(options) {
 	// configure
 	const initialSupply = options.initialSupply || new web3.BigNumber(0)
 	const initialBalances = options.initialBalances || []
+	const initialAllowances = options.initialAllowances || []
 	const createToken = options.token
 	const purchase = function (to, amount) { return options.purchase(token, to, amount) }
 
@@ -63,6 +64,83 @@ export default function suite(options) {
 				await purchase(bob, 3)
 				expect(await token.balanceOf.call(bob)).to.be.bignumber.equal(3)
 			})
+		})
+
+		// NOTE: assumes that approve should always succeed
+		describe('approve(_spender, _value)', function () {
+			let describeApprove = function (name, from, to) {
+				describe('when ' + name, function () {
+					it('should return true when approving 0', async function () {
+						assert.isTrue(await token.approve.call(to, 0, { from: from }))
+					})
+
+					it('should return true when approving', async function () {
+						assert.isTrue(await token.approve.call(to, 3, { from: from }))
+					})
+
+					it('should return true when updating approval', async function () {
+						assert.isTrue(await token.approve.call(to, 2, { from: from }))
+						await token.approve(to, 2, { from: from })
+
+						// test decreasing approval
+						assert.isTrue(await token.approve.call(to, 1, { from: from }))
+
+						// test not-updating approval
+						assert.isTrue(await token.approve.call(to, 2, { from: from }))
+
+						// test increasing approval
+						assert.isTrue(await token.approve.call(to, 3, { from: from }))
+					})
+
+					it('should return true when revoking approval', async function () {
+						await token.approve(to, 3, { from: from })
+						assert.isTrue(await token.approve.call(to, 0, { from: from }))
+					})
+
+					it('should update allowance accordingly', async function () {
+						await token.approve(to, 1, { from: from })
+						expect(await token.allowance(from, to)).to.be.bignumber.equal(1)
+
+						await token.approve(to, 3, { from: from })
+						expect(await token.allowance(from, to)).to.be.bignumber.equal(3)
+
+						await token.approve(to, 0, { from: from })
+						expect(await token.allowance(from, to)).to.be.bignumber.equal(0)
+					})
+
+					it('should fire Approval event', async function () {
+						await testApprovalEvent(from, to, 1)
+						if (from != to) {
+							await testApprovalEvent(to, from, 2)
+						}
+					})
+
+					it('should fire Approval when allowance was set to 0', async function () {
+						await token.approve(to, 3, { from: from })
+						await testApprovalEvent(from, to, 0)
+					})
+
+					it('should fire Approval even when allowance did not change', async function () {
+						// even 0 -> 0 should fire Approval event
+						await testApprovalEvent(from, to, 0)
+
+						await token.approve(to, 3, { from: from })
+						await testApprovalEvent(from, to, 3)
+					})
+
+					let testApprovalEvent = async function (from, to, amount) {
+						let result = await token.approve(to, amount, { from: from })
+						let log = result.logs[0]
+						assert.equal(log.event, 'Approval')
+						assert.equal(log.args.owner, from)
+						assert.equal(log.args.spender, to)
+						expect(log.args.value).to.be.bignumber.equal(amount)
+					}
+				})
+			}
+
+			describeApprove('_spender != sender', alice, bob)
+			describeApprove('_spender == sender', alice, alice)
 		})
 
 		describe('transfer(_to, _value)', function () {
