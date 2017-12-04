@@ -1,5 +1,7 @@
 'use strict'
 
+import {expectRevertOrFail} from './helpers'
+
 export default function suite(options) {
 	const accounts = options.accounts
 
@@ -61,6 +63,104 @@ export default function suite(options) {
 				await purchase(bob, 3)
 				expect(await token.balanceOf.call(bob)).to.be.bignumber.equal(3)
 			})
+		})
+
+		describe('transfer(_to, _value)', function () {
+			it('should return true when called with amount of 0', async function () {
+				assert.isTrue(await token.transfer.call(bob, 0, { from: alice }))
+			})
+
+			it('should revert when trying to transfer something while having nothing', async function () {
+				await expectRevertOrFail(token.transfer(bob, 1, { from: alice }))
+			})
+
+			it('should revert when trying to transfer more than balance', async function () {
+				await purchase(alice, 3)
+				await expectRevertOrFail(token.transfer(bob, 4, { from: alice }))
+
+				await token.transfer(bob, 1, { from: alice })
+				await expectRevertOrFail(token.transfer(bob, 3, { from: alice }))
+				await expectRevertOrFail(token.transfer(alice, 3, { from: alice }))
+			})
+
+			it('should return true when transfer can be made', async function () {
+				await purchase(alice, 3)
+				assert.isTrue(await token.transfer.call(bob, 1, { from: alice }))
+				assert.isTrue(await token.transfer.call(bob, 2, { from: alice }))
+				assert.isTrue(await token.transfer.call(bob, 3, { from: alice }))
+
+				await token.transfer(bob, 1, { from: alice })
+				assert.isTrue(await token.transfer.call(bob, 1, { from: alice }))
+				assert.isTrue(await token.transfer.call(bob, 2, { from: alice }))
+			})
+
+			it('should transfer given amount', async function () {
+				await purchase(alice, 3)
+				let aliceBalance1 = await token.balanceOf.call(alice)
+				let bobBalance1 = await token.balanceOf.call(bob)
+
+				await token.transfer(bob, 1, { from: alice })
+				let aliceBalance2 = await token.balanceOf.call(alice)
+				let bobBalance2 = await token.balanceOf.call(bob)
+				expect(aliceBalance2).to.be.bignumber.equal(aliceBalance1.minus(1))
+				expect(bobBalance2).to.be.bignumber.equal(bobBalance1.plus(1))
+
+				await token.transfer(bob, 2, { from: alice })
+				let aliceBalance3 = await token.balanceOf.call(alice)
+				let bobBalance3 = await token.balanceOf.call(bob)
+				expect(aliceBalance3).to.be.bignumber.equal(aliceBalance2.minus(2))
+				expect(bobBalance3).to.be.bignumber.equal(bobBalance2.plus(2))
+			})
+
+			it('should allow transferring to yourself', async function () {
+				await purchase(alice, 3)
+				let aliceBalance1 = await token.balanceOf.call(alice)
+
+				await token.transfer(alice, 2, { from: alice })
+				let aliceBalance2 = await token.balanceOf.call(alice)
+				expect(aliceBalance2).to.be.bignumber.equal(aliceBalance1)
+
+				await token.transfer(alice, 2, { from: alice })
+				let aliceBalance3 = await token.balanceOf.call(alice)
+				expect(aliceBalance3).to.be.bignumber.equal(aliceBalance1)
+			})
+
+			it('should not affect totalSupply', async function () {
+				await purchase(alice, 3)
+				let supply1 = await token.totalSupply.call()
+				await token.transfer(bob, 3, { from: alice })
+				let supply2 = await token.totalSupply.call()
+				expect(supply2).to.be.be.bignumber.equal(supply1)
+
+				await token.transfer(bob, 3, { from: bob })
+				let supply3 = await token.totalSupply.call()
+				expect(supply3).to.be.be.bignumber.equal(supply1)
+			})
+
+			it('should fire Transfer event', async function () {
+				await testTransferEvent(alice, bob, 3)
+			})
+
+			it('should fire Transfer event when transferring to yourself', async function () {
+				await testTransferEvent(alice, alice, 3)
+			})
+
+			it('should fire Transfer event when transferring amount of 0', async function () {
+				await testTransferEvent(alice, bob, 0)
+			})
+
+			let testTransferEvent = async function (from, to, amount) {
+				if (amount > 0) {
+					await purchase(from, amount)
+				}
+
+				let result = await token.transfer(to, amount, { from: from })
+				let log = result.logs[0]
+				assert.equal(log.event, 'Transfer')
+				assert.equal(log.args.from, from)
+				assert.equal(log.args.to, to)
+				expect(log.args.value).to.be.bignumber.equal(amount)
+			}
 		})
 	})
 }
