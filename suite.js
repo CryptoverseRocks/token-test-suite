@@ -2,6 +2,52 @@
 
 import { expectRevertOrFail } from './helpers'
 
+/**
+ * The test suite configuration.
+ * @typedef {Object} SuiteOptions
+ * @property {string[]} accounts
+ *   The unlocked accounts to test with (starting at index 1). At least 4 accounts are required.
+ *   Contract owner is expected to be accounts[0].
+ * @property {TokenFactoryCallback} token
+ *   Callback to create token contract with.
+ * @property {TokenPurchaseCallback} purchase
+ *   Callback to purchase tokens with.
+ * @property {BigNumber|number} [initialSupply]
+ *   The initial token supply. Defaults to 0.
+ * @property {[string, BigNumber|number][]} initialBalances
+ *   The tuples (account, balance) of initial account balances. Defaults to [] (no initial balance testing).
+ * @property {[string, string, BigNumber|number][]} initialAllowances
+ *   The tuples (owner, spender, allowance) of initial allowances. Defaults to [] (no initial allowance testing).
+ * @property {string} [name]
+ *   The expected token name (if not provided, name is not tested).
+ * @property {string} [symbol]
+ *   The expected token symbol (if not provided, symbol is not tested).
+ * @property {string} [decimals]
+ *   The expected token number decimals (if not provided, decimals are not tested).
+ * @property {boolean} [increaseDecreaseApproval]
+ *   Controls whether increase and decrease approval functions should be tested (they are not part of the ERC-20).
+ */
+
+/**
+ * The token creation callback.
+ * @callback TokenFactoryCallback
+ */
+
+/**
+ * The token purchase callback.
+ * @callback TokenPurchaseCallback
+ * @param {Object} token The token created by TokenFactoryCallback to purchase tokens of.
+ * @param {string} to Account of the beneficiary.
+ * @param {BigNumber|number} amount The amount of the tokens to purchase.
+ */
+
+/**
+ * Function will test the given contract to fullfil ERC-20 token standard.
+ *
+ * Expected to be called within mocha context.
+ *
+ * @param {SuiteOptions} options
+ */
 export default function suite(options) {
 	const accounts = options.accounts
 
@@ -24,8 +70,6 @@ export default function suite(options) {
 	const charles = accounts[3]
 
 	let token = null
-
-
 
 	beforeEach(async function () {
 		token = await createToken()
@@ -475,7 +519,7 @@ export default function suite(options) {
 					assert.isTrue(await token.increaseApproval.call(bob, 3, { from: alice }))
 				})
 
-				it('should revert when approval cannot be increased', async function() {
+				it('should revert when approval cannot be increased', async function () {
 					await token.increaseApproval(bob, 1, { from: alice })
 					await expectRevertOrFail(token.increaseApproval(bob, uintMax, { from: alice }))
 				})
@@ -523,7 +567,7 @@ export default function suite(options) {
 					assert.isTrue(await token.decreaseApproval.call(bob, 3, { from: alice }))
 				})
 
-				it('should return true when approval cannot be decreased', async function() {
+				it('should return true when approval cannot be decreased', async function () {
 					assert.isTrue(await token.decreaseApproval.call(bob, uintMax, { from: alice }))
 				})
 
