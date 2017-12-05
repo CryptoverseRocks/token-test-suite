@@ -68,8 +68,8 @@ export default function suite(options) {
 		})
 
 		describe('allowance(_owner, _spender)', function () {
-			describeIt('_owner != _spender', alice, bob)
-			describeIt('_owner == _spender', alice, alice)
+			describeIt(when('_owner != _spender'), alice, bob)
+			describeIt(when('_owner == _spender'), alice, alice)
 
 			it('should have correct initial allowance', async function () {
 				for (let i = 0; i < initialAllowances.length; i++) {
@@ -97,7 +97,7 @@ export default function suite(options) {
 			})
 
 			function describeIt(name, from, to) {
-				describe('when ' + name, function () {
+				describe(name, function () {
 					it('should return the correct allowance', async function () {
 						await token.approve(to, 1, { from: from })
 						expect(await token.allowance.call(from, to)).to.be.bignumber.equal(1)
@@ -108,11 +108,11 @@ export default function suite(options) {
 
 		// NOTE: assumes that approve should always succeed
 		describe('approve(_spender, _value)', function () {
-			describeIt('_spender != sender', alice, bob)
-			describeIt('_spender == sender', alice, alice)
+			describeIt(when('_spender != sender'), alice, bob)
+			describeIt(when('_spender == sender'), alice, alice)
 
 			function describeIt(name, from, to) {
-				describe('when ' + name, function () {
+				describe(name, function () {
 					it('should return true when approving 0', async function () {
 						assert.isTrue(await token.approve.call(to, 0, { from: from }))
 					})
@@ -184,11 +184,11 @@ export default function suite(options) {
 		})
 
 		describe('transfer(_to, _value)', function () {
-			describeIt('_to != sender', alice, bob)
-			describeIt('_to == sender', alice, alice)
+			describeIt(when('_to != sender'), alice, bob)
+			describeIt(when('_to == sender'), alice, alice)
 
 			function describeIt(name, from, to) {
-				describe('when ' + name, function () {
+				describe(name, function () {
 					it('should return true when called with amount of 0', async function () {
 						assert.isTrue(await token.transfer.call(to, 0, { from: from }))
 					})
@@ -279,10 +279,10 @@ export default function suite(options) {
 		})
 
 		describe('transferFrom(_from, _to, _value)', function () {
-			describeIt('_from != _to and _to != sender', alice, bob, charles)
-			describeIt('_from != _to and _to == sender', alice, bob, bob)
-			describeIt('_from == _to and _to != sender', alice, alice, bob)
-			describeIt('_from == _to and _to == sender', alice, alice, alice)
+			describeIt(when('_from != _to and _to != sender'), alice, bob, charles)
+			describeIt(when('_from != _to and _to == sender'), alice, bob, bob)
+			describeIt(when('_from == _to and _to != sender'), alice, alice, bob)
+			describeIt(when('_from == _to and _to == sender'), alice, alice, alice)
 
 			it('should revert when trying to transfer while not allowed at all', async function () {
 				await purchase(alice, 3)
@@ -295,7 +295,7 @@ export default function suite(options) {
 			})
 
 			function describeIt(name, from, via, to) {
-				describe('when ' + name + ')', function () {
+				describe(name, function () {
 					beforeEach(async function () {
 						// by default approve sender (via) to transfer
 						await token.approve(via, 3, { from: from })
@@ -407,4 +407,12 @@ export default function suite(options) {
 			}
 		})
 	})
+}
+
+/**
+ * Formats the describe-case name.
+ * @param {string} name
+ */
+function when(name) {
+	return 'when (' + name + ')'
 }
