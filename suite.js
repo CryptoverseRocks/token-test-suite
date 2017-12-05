@@ -193,6 +193,17 @@ export default function suite(options) {
 						assert.isTrue(await token.transfer.call(to, 0, { from: from }))
 					})
 
+					it('should return true when transfer can be made, false otherwise', async function () {
+						await purchase(from, 3)
+						assert.isTrue(await token.transfer.call(to, 1, { from: from }))
+						assert.isTrue(await token.transfer.call(to, 2, { from: from }))
+						assert.isTrue(await token.transfer.call(to, 3, { from: from }))
+
+						await token.transfer(to, 1, { from: from })
+						assert.isTrue(await token.transfer.call(to, 1, { from: from }))
+						assert.isTrue(await token.transfer.call(to, 2, { from: from }))
+					})
+
 					it('should revert when trying to transfer something while having nothing', async function () {
 						await expectRevertOrFail(token.transfer(to, 1, { from: from }))
 					})
@@ -203,17 +214,6 @@ export default function suite(options) {
 
 						await token.transfer('0x1', 1, { from: from })
 						await expectRevertOrFail(token.transfer(to, 3, { from: from }))
-					})
-
-					it('should return true when transfer can be made', async function () {
-						await purchase(from, 3)
-						assert.isTrue(await token.transfer.call(to, 1, { from: from }))
-						assert.isTrue(await token.transfer.call(to, 2, { from: from }))
-						assert.isTrue(await token.transfer.call(to, 3, { from: from }))
-
-						await token.transfer(to, 1, { from: from })
-						assert.isTrue(await token.transfer.call(to, 1, { from: from }))
-						assert.isTrue(await token.transfer.call(to, 2, { from: from }))
 					})
 
 					it('should not affect totalSupply', async function () {
@@ -309,6 +309,17 @@ export default function suite(options) {
 						assert.isTrue(await token.transferFrom.call(to, from, 0, { from: via }))
 					})
 
+					it('should return true when transfer can be made, false otherwise', async function () {
+						await purchase(from, 3)
+						assert.isTrue(await token.transferFrom.call(from, to, 1, { from: via }))
+						assert.isTrue(await token.transferFrom.call(from, to, 2, { from: via }))
+						assert.isTrue(await token.transferFrom.call(from, to, 3, { from: via }))
+
+						await token.transferFrom(from, to, 1, { from: via })
+						assert.isTrue(await token.transferFrom.call(from, to, 1, { from: via }))
+						assert.isTrue(await token.transferFrom.call(from, to, 2, { from: via }))
+					})
+
 					it('should revert when trying to transfer something while _from having nothing', async function () {
 						await expectRevertOrFail(token.transferFrom(from, to, 1, { from: via }))
 					})
@@ -321,17 +332,6 @@ export default function suite(options) {
 					it('should revert when trying to transfer more than allowed', async function () {
 						await purchase(from, 4)
 						await expectRevertOrFail(token.transferFrom(from, to, 4, { from: via }))
-					})
-
-					it('should return true when transfer can be made', async function () {
-						await purchase(from, 3)
-						assert.isTrue(await token.transferFrom.call(from, to, 1, { from: via }))
-						assert.isTrue(await token.transferFrom.call(from, to, 2, { from: via }))
-						assert.isTrue(await token.transferFrom.call(from, to, 3, { from: via }))
-
-						await token.transferFrom(from, to, 1, { from: via })
-						assert.isTrue(await token.transferFrom.call(from, to, 1, { from: via }))
-						assert.isTrue(await token.transferFrom.call(from, to, 2, { from: via }))
 					})
 
 					it('should not affect totalSupply', async function () {
