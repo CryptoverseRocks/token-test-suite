@@ -433,6 +433,32 @@ export default function suite(options) {
 			}
 		})
 	})
+
+	describe('ERC-20 optional', function () {
+		describe('name()', function () {
+			if (typeof options.name !== 'undefined') {
+				it("should return '" + options.name + "'", async function () {
+					assert.equal(await token.name.call(), options.name)
+				})
+			}
+		})
+
+		describe('symbol()', function () {
+			if (typeof options.symbol !== 'undefined') {
+				it("should return '" + options.symbol + "'", async function () {
+					assert.equal(await token.symbol.call(), options.symbol)
+				})
+			}
+		})
+
+		describe('decimals()', function () {
+			if (typeof options.decimals !== 'undefined') {
+				it("should return '" + options.decimals + "'", async function () {
+					expect(await token.decimals.call()).to.be.bignumber.equal(options.decimals)
+				})
+			}
+		})
+	})
 }
 
 /**
