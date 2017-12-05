@@ -68,6 +68,9 @@ export default function suite(options) {
 		})
 
 		describe('allowance(_owner, _spender)', function () {
+			describeIt('_owner != _spender', alice, bob)
+			describeIt('_owner == _spender', alice, alice)
+
 			it('should have correct initial allowance', async function () {
 				for (let i = 0; i < initialAllowances.length; i++) {
 					let owner = initialAllowances[i][0]
@@ -76,18 +79,6 @@ export default function suite(options) {
 					expect(await token.allowance.call(owner, spender)).to.be.bignumber.equal(expectedAllowance)
 				}
 			})
-
-			let describeAllowance = function (name, from, to) {
-				describe('when ' + name, function () {
-					it('should return the correct allowance', async function () {
-						await token.approve(to, 1, { from: from })
-						expect(await token.allowance.call(from, to)).to.be.bignumber.equal(1)
-					})
-				})
-			}
-
-			describeAllowance('_owner != _spender', alice, bob)
-			describeAllowance('_owner == _spender', alice, alice)
 
 			it('should return the correct allowance', async function () {
 				await token.approve(bob, 1, { from: alice })
@@ -104,11 +95,23 @@ export default function suite(options) {
 				expect(await token.allowance.call(charles, alice)).to.be.bignumber.equal(5)
 				expect(await token.allowance.call(charles, bob)).to.be.bignumber.equal(6)
 			})
+
+			function describeIt(name, from, to) {
+				describe('when ' + name, function () {
+					it('should return the correct allowance', async function () {
+						await token.approve(to, 1, { from: from })
+						expect(await token.allowance.call(from, to)).to.be.bignumber.equal(1)
+					})
+				})
+			}
 		})
 
 		// NOTE: assumes that approve should always succeed
 		describe('approve(_spender, _value)', function () {
-			let describeApprove = function (name, from, to) {
+			describeIt('_spender != sender', alice, bob)
+			describeIt('_spender == sender', alice, alice)
+
+			function describeIt(name, from, to) {
 				describe('when ' + name, function () {
 					it('should return true when approving 0', async function () {
 						assert.isTrue(await token.approve.call(to, 0, { from: from }))
@@ -170,9 +173,6 @@ export default function suite(options) {
 				})
 			}
 
-			describeApprove('_spender != sender', alice, bob)
-			describeApprove('_spender == sender', alice, alice)
-
 			async function testApprovalEvent(from, to, amount) {
 				let result = await token.approve(to, amount, { from: from })
 				let log = result.logs[0]
@@ -184,7 +184,10 @@ export default function suite(options) {
 		})
 
 		describe('transfer(_to, _value)', function () {
-			let describeTransfer = function (name, from, to) {
+			describeIt('_to != sender', alice, bob)
+			describeIt('_to == sender', alice, alice)
+
+			function describeIt(name, from, to) {
 				describe('when ' + name, function () {
 					it('should return true when called with amount of 0', async function () {
 						assert.isTrue(await token.transfer.call(to, 0, { from: from }))
@@ -261,9 +264,6 @@ export default function suite(options) {
 				})
 			}
 
-			describeTransfer('_to != sender', alice, bob)
-			describeTransfer('_to == sender', alice, alice)
-
 			async function testTransferEvent(from, to, amount) {
 				if (amount > 0) {
 					await purchase(from, amount)
@@ -279,7 +279,22 @@ export default function suite(options) {
 		})
 
 		describe('transferFrom(_from, _to, _value)', function () {
-			let describeFrom = function (name, from, via, to) {
+			describeIt('_from != _to and _to != sender', alice, bob, charles)
+			describeIt('_from != _to and _to == sender', alice, bob, bob)
+			describeIt('_from == _to and _to != sender', alice, alice, bob)
+			describeIt('_from == _to and _to == sender', alice, alice, alice)
+
+			it('should revert when trying to transfer while not allowed at all', async function () {
+				await purchase(alice, 3)
+				await expectRevertOrFail(token.transferFrom(alice, bob, 1, { from: bob }))
+				await expectRevertOrFail(token.transferFrom(alice, charles, 1, { from: bob }))
+			})
+
+			it('should fire Transfer event when transferring amount of 0 and sender is not approved', async function () {
+				await testTransferEvent(alice, bob, bob, 0)
+			})
+
+			function describeIt(name, from, via, to) {
 				describe('when ' + name + ')', function () {
 					beforeEach(async function () {
 						// by default approve sender (via) to transfer
@@ -377,21 +392,6 @@ export default function suite(options) {
 					})
 				})
 			}
-
-			describeFrom('_from != _to and _to != sender', alice, bob, charles)
-			describeFrom('_from != _to and _to == sender', alice, bob, bob)
-			describeFrom('_from == _to and _to != sender', alice, alice, bob)
-			describeFrom('_from == _to and _to == sender', alice, alice, alice)
-
-			it('should revert when trying to transfer while not allowed at all', async function () {
-				await purchase(alice, 3)
-				await expectRevertOrFail(token.transferFrom(alice, bob, 1, { from: bob }))
-				await expectRevertOrFail(token.transferFrom(alice, charles, 1, { from: bob }))
-			})
-
-			it('should fire Transfer event when transferring amount of 0 and sender is not approved', async function () {
-				await testTransferEvent(alice, bob, bob, 0)
-			})
 
 			async function testTransferEvent(from, via, to, amount) {
 				if (amount > 0) {
