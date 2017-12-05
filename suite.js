@@ -13,6 +13,7 @@ export default function suite(options) {
 	const purchase = function (to, amount) { return options.purchase(token, to, amount) }
 
 	// setup
+	const uintMax = new web3.BigNumber(2).pow(256).minus(1)
 	const expect = require('chai')
 		.use(require('chai-bignumber')(web3.BigNumber))
 		.expect
@@ -23,6 +24,8 @@ export default function suite(options) {
 	const charles = accounts[3]
 
 	let token = null
+
+
 
 	beforeEach(async function () {
 		token = await createToken()
@@ -459,6 +462,105 @@ export default function suite(options) {
 			}
 		})
 	})
+
+	if (options.increaseDecreaseApproval) {
+		describe('approvals', function () {
+			describe('increaseApproval(_spender, _addedValue)', function () {
+				it('should return true when increasing approval', async function () {
+					assert.isTrue(await token.increaseApproval.call(bob, 0, { from: alice }))
+					assert.isTrue(await token.increaseApproval.call(bob, uintMax, { from: alice }))
+
+					await token.increaseApproval(bob, 3, { from: alice })
+					assert.isTrue(await token.increaseApproval.call(bob, 0, { from: alice }))
+					assert.isTrue(await token.increaseApproval.call(bob, 3, { from: alice }))
+				})
+
+				it('should revert when approval cannot be increased', async function() {
+					await token.increaseApproval(bob, 1, { from: alice })
+					await expectRevertOrFail(token.increaseApproval(bob, uintMax, { from: alice }))
+				})
+
+				it('should update allowance accordingly', async function () {
+					await token.increaseApproval(bob, 1, { from: alice })
+					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(1)
+
+					await token.increaseApproval(bob, 2, { from: alice })
+					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(3)
+
+					await token.increaseApproval(bob, 0, { from: alice })
+					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(3)
+				})
+
+				it('should fire Approval event', async function () {
+					await testApprovalEvent(alice, bob, 0, 1)
+					await testApprovalEvent(alice, bob, 1, 2)
+				})
+
+				it('should fire Approval even when allowance did not change', async function () {
+					await testApprovalEvent(alice, bob, 0, 0)
+
+					await token.increaseApproval(bob, 3, { from: alice })
+					await testApprovalEvent(alice, bob, 3, 0)
+				})
+
+				async function testApprovalEvent(from, to, fromAmount, byAmount) {
+					let result = await token.increaseApproval(to, byAmount, { from: from })
+					let log = result.logs[0]
+					assert.equal(log.event, 'Approval')
+					assert.equal(log.args.owner, from)
+					assert.equal(log.args.spender, to)
+					expect(log.args.value).to.be.bignumber.equal(fromAmount + byAmount)
+				}
+			})
+
+			describe('decreaseApproval(_spender, _subtractedValue)', function () {
+				beforeEach(async function () {
+					await token.approve(bob, 3, { from: alice })
+				})
+
+				it('should return true when decreasing approval', async function () {
+					assert.isTrue(await token.decreaseApproval.call(bob, 0, { from: alice }))
+					assert.isTrue(await token.decreaseApproval.call(bob, 3, { from: alice }))
+				})
+
+				it('should return true when approval cannot be decreased', async function() {
+					assert.isTrue(await token.decreaseApproval.call(bob, uintMax, { from: alice }))
+				})
+
+				it('should update allowance accordingly', async function () {
+					await token.decreaseApproval(bob, 1, { from: alice })
+					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(2)
+
+					await token.decreaseApproval(bob, 3, { from: alice })
+					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(0)
+
+					await token.decreaseApproval(bob, 0, { from: alice })
+					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(0)
+				})
+
+				it('should fire Approval event', async function () {
+					await testApprovalEvent(alice, bob, 3, 1)
+					await testApprovalEvent(alice, bob, 2, 2)
+				})
+
+				it('should fire Approval even when allowance did not change', async function () {
+					await testApprovalEvent(alice, bob, 3, 0)
+
+					await token.decreaseApproval(bob, 3, { from: alice })
+					await testApprovalEvent(alice, bob, 0, 0)
+				})
+
+				async function testApprovalEvent(from, to, fromAmount, byAmount) {
+					let result = await token.decreaseApproval(to, byAmount, { from: from })
+					let log = result.logs[0]
+					assert.equal(log.event, 'Approval')
+					assert.equal(log.args.owner, from)
+					assert.equal(log.args.spender, to)
+					expect(log.args.value).to.be.bignumber.equal(fromAmount - byAmount)
+				}
+			})
+		})
+	}
 }
 
 /**
