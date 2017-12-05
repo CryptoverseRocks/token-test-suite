@@ -167,20 +167,20 @@ export default function suite(options) {
 						await token.approve(to, 3, { from: from })
 						await testApprovalEvent(from, to, 3)
 					})
-
-					let testApprovalEvent = async function (from, to, amount) {
-						let result = await token.approve(to, amount, { from: from })
-						let log = result.logs[0]
-						assert.equal(log.event, 'Approval')
-						assert.equal(log.args.owner, from)
-						assert.equal(log.args.spender, to)
-						expect(log.args.value).to.be.bignumber.equal(amount)
-					}
 				})
 			}
 
 			describeApprove('_spender != sender', alice, bob)
 			describeApprove('_spender == sender', alice, alice)
+
+			async function testApprovalEvent(from, to, amount) {
+				let result = await token.approve(to, amount, { from: from })
+				let log = result.logs[0]
+				assert.equal(log.event, 'Approval')
+				assert.equal(log.args.owner, from)
+				assert.equal(log.args.spender, to)
+				expect(log.args.value).to.be.bignumber.equal(amount)
+			}
 		})
 
 		describe('transfer(_to, _value)', function () {
@@ -258,29 +258,29 @@ export default function suite(options) {
 					it('should fire Transfer event when transferring amount of 0', async function () {
 						await testTransferEvent(from, to, 0)
 					})
-
-					let testTransferEvent = async function (from, to, amount) {
-						if (amount > 0) {
-							await purchase(from, amount)
-						}
-
-						let result = await token.transfer(to, amount, { from: from })
-						let log = result.logs[0]
-						assert.equal(log.event, 'Transfer')
-						assert.equal(log.args.from, from)
-						assert.equal(log.args.to, to)
-						expect(log.args.value).to.be.bignumber.equal(amount)
-					}
 				})
 			}
 
 			describeTransfer('_to != sender', alice, bob)
 			describeTransfer('_to == sender', alice, alice)
+
+			async function testTransferEvent(from, to, amount) {
+				if (amount > 0) {
+					await purchase(from, amount)
+				}
+
+				let result = await token.transfer(to, amount, { from: from })
+				let log = result.logs[0]
+				assert.equal(log.event, 'Transfer')
+				assert.equal(log.args.from, from)
+				assert.equal(log.args.to, to)
+				expect(log.args.value).to.be.bignumber.equal(amount)
+			}
 		})
 
 		describe('transferFrom(_from, _to, _value)', function () {
 			let describeFrom = function (name, from, via, to) {
-				describe('when ' + name, function () {
+				describe('when ' + name + ')', function () {
 					beforeEach(async function () {
 						// by default approve sender (via) to transfer
 						await token.approve(via, 3, { from: from })
@@ -393,7 +393,7 @@ export default function suite(options) {
 				await testTransferEvent(alice, bob, bob, 0)
 			})
 
-			let testTransferEvent = async function (from, via, to, amount) {
+			async function testTransferEvent(from, via, to, amount) {
 				if (amount > 0) {
 					await purchase(from, amount)
 				}
