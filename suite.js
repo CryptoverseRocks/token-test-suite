@@ -2,6 +2,10 @@
 
 import { expectRevertOrFail } from './helpers'
 
+const expect = require('chai')
+	.use(require('chai-bignumber')(web3.BigNumber))
+	.expect
+
 /**
  * The test suite configuration.
  * @typedef {Object} SuiteOptions
@@ -60,11 +64,6 @@ export default function suite(options) {
 
 	// setup
 	const uintMax = new web3.BigNumber(2).pow(256).minus(1)
-	const expect = require('chai')
-		.use(require('chai-bignumber')(web3.BigNumber))
-		.expect
-
-	// name the accounts
 	const alice = accounts[1]
 	const bob = accounts[2]
 	const charles = accounts[3]
