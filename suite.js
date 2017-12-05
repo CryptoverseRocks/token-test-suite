@@ -30,11 +30,21 @@ const expect = require('chai')
  *   The expected token number decimals (if not provided, decimals are not tested).
  * @property {boolean} [increaseDecreaseApproval]
  *   Controls whether increase and decrease approval functions should be tested (they are not part of the ERC-20).
+ * @property {TokenCallback} [beforeEach]
+ *   Callback to be called on every beforeEach.
+ * @property {TokenCallback} [afterEach]
+ *   Callback to be called on every afterEach.
  */
 
 /**
  * The token creation callback.
  * @callback TokenFactoryCallback
+ * @returns {Object} The deployed token contract.
+ */
+
+/**
+ * @callback TokenCallback
+ * @param {Object} token The deployed token contract.
  */
 
 /**
@@ -72,6 +82,15 @@ export default function suite(options) {
 
 	beforeEach(async function () {
 		token = await createToken()
+		if (options.beforeEach) {
+			options.beforeEach(token)
+		}
+	})
+
+	afterEach(async function () {
+		if (options.afterEach) {
+			options.afterEach(token)
+		}
 	})
 
 	describe('ERC-20', function () {
