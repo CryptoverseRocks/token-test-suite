@@ -383,6 +383,32 @@ export default function suite(options) {
 						}
 					})
 
+					it('should update allowances accordingly', async function () {
+						await purchase(from, 3)
+						let viaAllowance1 = await token.allowance.call(from, via)
+						let toAllowance1 = await token.allowance.call(from, to)
+
+						await token.transferFrom(from, to, 2, { from: via })
+						let viaAllowance2 = await token.allowance.call(from, via)
+						let toAllowance2 = await token.allowance.call(from, to)
+
+						expect(viaAllowance2).to.be.bignumber.equal(viaAllowance1.minus(2))
+
+						if (to != via) {
+							expect(toAllowance2).to.be.bignumber.equal(toAllowance1)
+						}
+
+						await token.transferFrom(from, to, 1, { from: via })
+						let viaAllowance3 = await token.allowance.call(from, via)
+						let toAllowance3 = await token.allowance.call(from, to)
+
+						expect(viaAllowance3).to.be.bignumber.equal(viaAllowance2.minus(1))
+
+						if (to != via) {
+							expect(toAllowance3).to.be.bignumber.equal(toAllowance1)
+						}
+					})
+
 					it('should fire Transfer event', async function () {
 						await testTransferEvent(from, via, to, 3)
 					})
