@@ -70,7 +70,7 @@ export default function suite(options) {
 	const initialBalances = options.initialBalances || []
 	const initialAllowances = options.initialAllowances || []
 	const create = options.create
-	const purchase = function (to, amount) { return options.purchase(contract, to, amount) }
+	const purchase = async function (to, amount) { return await options.purchase(contract, to, amount) }
 
 	// setup
 	const tokens = function(amount) { return new web3.BigNumber(amount).shift(decimals) }
@@ -86,13 +86,13 @@ export default function suite(options) {
 		contract = await create()
 		decimals = await contract.decimals.call()
 		if (options.beforeEach) {
-			options.beforeEach(contract)
+			await options.beforeEach(contract)
 		}
 	})
 
 	afterEach(async function () {
 		if (options.afterEach) {
-			options.afterEach(contract)
+			await options.afterEach(contract)
 		}
 		contract = null
 		decimals = 0
