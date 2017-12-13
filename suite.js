@@ -12,7 +12,7 @@ const expect = require('chai')
  * @property {string[]} accounts
  *   The unlocked accounts to test with (starting at index 1). At least 4 accounts are required.
  *   Contract owner is expected to be accounts[0].
- * @property {TokenFactoryCallback} token
+ * @property {TokenCreateCallback} create
  *   Callback to create token contract with.
  * @property {TokenPurchaseCallback} purchase
  *   Callback to purchase tokens with.
@@ -38,7 +38,7 @@ const expect = require('chai')
 
 /**
  * The token creation callback.
- * @callback TokenFactoryCallback
+ * @callback TokenCreateCallback
  * @returns {Object} The deployed token contract.
  */
 
@@ -50,7 +50,7 @@ const expect = require('chai')
 /**
  * The token purchase callback.
  * @callback TokenPurchaseCallback
- * @param {Object} token The token created by TokenFactoryCallback to purchase tokens of.
+ * @param {Object} token The token created by TokenCreateCallback to purchase tokens of.
  * @param {string} to Account of the beneficiary.
  * @param {BigNumber|number} amount The amount of the tokens to purchase.
  */
@@ -69,8 +69,8 @@ export default function suite(options) {
 	const initialSupply = options.initialSupply || new web3.BigNumber(0)
 	const initialBalances = options.initialBalances || []
 	const initialAllowances = options.initialAllowances || []
-	const createToken = options.token
-	const purchase = function (to, amount) { return options.purchase(token, to, amount) }
+	const create = options.create
+	const purchase = function (to, amount) { return options.purchase(contract, to, amount) }
 
 	// setup
 	const tokens = function(amount) { return new web3.BigNumber(amount).shift(decimals) }
@@ -79,38 +79,40 @@ export default function suite(options) {
 	const bob = accounts[2]
 	const charles = accounts[3]
 
-	let token = null
+	let contract = null
 	let decimals = 0
 
 	beforeEach(async function () {
-		token = await createToken()
-		decimals = await token.decimals.call()
+		contract = await create()
+		decimals = await contract.decimals.call()
 		if (options.beforeEach) {
-			options.beforeEach(token)
+			options.beforeEach(contract)
 		}
 	})
 
 	afterEach(async function () {
 		if (options.afterEach) {
-			options.afterEach(token)
+			options.afterEach(contract)
 		}
+		contract = null
+		decimals = 0
 	})
 
 	describe('ERC-20', function () {
 		describe('totalSupply()', function () {
 			it('should have initial supply of ' + initialSupply.toFormat(), async function () {
-				expect(await token.totalSupply.call()).to.be.bignumber.equal(initialSupply)
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply)
 			})
 
 			it('should return the correct supply', async function () {
 				await purchase(alice, tokens(1))
-				expect(await token.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(1)))
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(1)))
 
 				await purchase(alice, tokens(2))
-				expect(await token.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(3)))
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(3)))
 
 				await purchase(bob, tokens(3))
-				expect(await token.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(6)))
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(6)))
 			})
 		})
 
@@ -119,19 +121,19 @@ export default function suite(options) {
 				for (let i = 0; i < initialBalances.length; i++) {
 					let address = initialBalances[i][0]
 					let balance = initialBalances[i][1]
-					expect(await token.balanceOf.call(address)).to.be.bignumber.equal(balance)
+					expect(await contract.balanceOf.call(address)).to.be.bignumber.equal(balance)
 				}
 			})
 
 			it('should return the correct balances', async function () {
 				await purchase(alice, tokens(1))
-				expect(await token.balanceOf.call(alice)).to.be.bignumber.equal(tokens(1))
+				expect(await contract.balanceOf.call(alice)).to.be.bignumber.equal(tokens(1))
 
 				await purchase(alice, tokens(2))
-				expect(await token.balanceOf.call(alice)).to.be.bignumber.equal(tokens(3))
+				expect(await contract.balanceOf.call(alice)).to.be.bignumber.equal(tokens(3))
 
 				await purchase(bob, tokens(3))
-				expect(await token.balanceOf.call(bob)).to.be.bignumber.equal(tokens(3))
+				expect(await contract.balanceOf.call(bob)).to.be.bignumber.equal(tokens(3))
 			})
 		})
 
@@ -144,31 +146,31 @@ export default function suite(options) {
 					let owner = initialAllowances[i][0]
 					let spender = initialAllowances[i][1]
 					let expectedAllowance = initialAllowances[i][2]
-					expect(await token.allowance.call(owner, spender)).to.be.bignumber.equal(expectedAllowance)
+					expect(await contract.allowance.call(owner, spender)).to.be.bignumber.equal(expectedAllowance)
 				}
 			})
 
 			it('should return the correct allowance', async function () {
-				await token.approve(bob, tokens(1), { from: alice })
-				await token.approve(charles, tokens(2), { from: alice })
-				await token.approve(charles, tokens(3), { from: bob })
-				await token.approve(alice, tokens(4), { from: bob })
-				await token.approve(alice, tokens(5), { from: charles })
-				await token.approve(bob, tokens(6), { from: charles })
+				await contract.approve(bob, tokens(1), { from: alice })
+				await contract.approve(charles, tokens(2), { from: alice })
+				await contract.approve(charles, tokens(3), { from: bob })
+				await contract.approve(alice, tokens(4), { from: bob })
+				await contract.approve(alice, tokens(5), { from: charles })
+				await contract.approve(bob, tokens(6), { from: charles })
 
-				expect(await token.allowance.call(alice, bob)).to.be.bignumber.equal(tokens(1))
-				expect(await token.allowance.call(alice, charles)).to.be.bignumber.equal(tokens(2))
-				expect(await token.allowance.call(bob, charles)).to.be.bignumber.equal(tokens(3))
-				expect(await token.allowance.call(bob, alice)).to.be.bignumber.equal(tokens(4))
-				expect(await token.allowance.call(charles, alice)).to.be.bignumber.equal(tokens(5))
-				expect(await token.allowance.call(charles, bob)).to.be.bignumber.equal(tokens(6))
+				expect(await contract.allowance.call(alice, bob)).to.be.bignumber.equal(tokens(1))
+				expect(await contract.allowance.call(alice, charles)).to.be.bignumber.equal(tokens(2))
+				expect(await contract.allowance.call(bob, charles)).to.be.bignumber.equal(tokens(3))
+				expect(await contract.allowance.call(bob, alice)).to.be.bignumber.equal(tokens(4))
+				expect(await contract.allowance.call(charles, alice)).to.be.bignumber.equal(tokens(5))
+				expect(await contract.allowance.call(charles, bob)).to.be.bignumber.equal(tokens(6))
 			})
 
 			function describeIt(name, from, to) {
 				describe(name, function () {
 					it('should return the correct allowance', async function () {
-						await token.approve(to, tokens(1), { from: from })
-						expect(await token.allowance.call(from, to)).to.be.bignumber.equal(tokens(1))
+						await contract.approve(to, tokens(1), { from: from })
+						expect(await contract.allowance.call(from, to)).to.be.bignumber.equal(tokens(1))
 					})
 				})
 			}
@@ -182,41 +184,41 @@ export default function suite(options) {
 			function describeIt(name, from, to) {
 				describe(name, function () {
 					it('should return true when approving 0', async function () {
-						assert.isTrue(await token.approve.call(to, 0, { from: from }))
+						assert.isTrue(await contract.approve.call(to, 0, { from: from }))
 					})
 
 					it('should return true when approving', async function () {
-						assert.isTrue(await token.approve.call(to, tokens(3), { from: from }))
+						assert.isTrue(await contract.approve.call(to, tokens(3), { from: from }))
 					})
 
 					it('should return true when updating approval', async function () {
-						assert.isTrue(await token.approve.call(to, tokens(2), { from: from }))
-						await token.approve(to, tokens(2), { from: from })
+						assert.isTrue(await contract.approve.call(to, tokens(2), { from: from }))
+						await contract.approve(to, tokens(2), { from: from })
 
 						// test decreasing approval
-						assert.isTrue(await token.approve.call(to, tokens(1), { from: from }))
+						assert.isTrue(await contract.approve.call(to, tokens(1), { from: from }))
 
 						// test not-updating approval
-						assert.isTrue(await token.approve.call(to, tokens(2), { from: from }))
+						assert.isTrue(await contract.approve.call(to, tokens(2), { from: from }))
 
 						// test increasing approval
-						assert.isTrue(await token.approve.call(to, tokens(3), { from: from }))
+						assert.isTrue(await contract.approve.call(to, tokens(3), { from: from }))
 					})
 
 					it('should return true when revoking approval', async function () {
-						await token.approve(to, tokens(3), { from: from })
-						assert.isTrue(await token.approve.call(to, tokens(0), { from: from }))
+						await contract.approve(to, tokens(3), { from: from })
+						assert.isTrue(await contract.approve.call(to, tokens(0), { from: from }))
 					})
 
 					it('should update allowance accordingly', async function () {
-						await token.approve(to, tokens(1), { from: from })
-						expect(await token.allowance(from, to)).to.be.bignumber.equal(tokens(1))
+						await contract.approve(to, tokens(1), { from: from })
+						expect(await contract.allowance(from, to)).to.be.bignumber.equal(tokens(1))
 
-						await token.approve(to, tokens(3), { from: from })
-						expect(await token.allowance(from, to)).to.be.bignumber.equal(tokens(3))
+						await contract.approve(to, tokens(3), { from: from })
+						expect(await contract.allowance(from, to)).to.be.bignumber.equal(tokens(3))
 
-						await token.approve(to, 0, { from: from })
-						expect(await token.allowance(from, to)).to.be.bignumber.equal(0)
+						await contract.approve(to, 0, { from: from })
+						expect(await contract.allowance(from, to)).to.be.bignumber.equal(0)
 					})
 
 					it('should fire Approval event', async function () {
@@ -227,7 +229,7 @@ export default function suite(options) {
 					})
 
 					it('should fire Approval when allowance was set to 0', async function () {
-						await token.approve(to, tokens(3), { from: from })
+						await contract.approve(to, tokens(3), { from: from })
 						await testApprovalEvent(from, to, 0)
 					})
 
@@ -235,14 +237,14 @@ export default function suite(options) {
 						// even 0 -> 0 should fire Approval event
 						await testApprovalEvent(from, to, 0)
 
-						await token.approve(to, tokens(3), { from: from })
+						await contract.approve(to, tokens(3), { from: from })
 						await testApprovalEvent(from, to, tokens(3))
 					})
 				})
 			}
 
 			async function testApprovalEvent(from, to, amount) {
-				let result = await token.approve(to, amount, { from: from })
+				let result = await contract.approve(to, amount, { from: from })
 				let log = result.logs[0]
 				assert.equal(log.event, 'Approval')
 				assert.equal(log.args.owner, from)
@@ -258,48 +260,48 @@ export default function suite(options) {
 			function describeIt(name, from, to) {
 				describe(name, function () {
 					it('should return true when called with amount of 0', async function () {
-						assert.isTrue(await token.transfer.call(to, 0, { from: from }))
+						assert.isTrue(await contract.transfer.call(to, 0, { from: from }))
 					})
 
 					it('should return true when transfer can be made, false otherwise', async function () {
 						await purchase(from, tokens(3))
-						assert.isTrue(await token.transfer.call(to, tokens(1), { from: from }))
-						assert.isTrue(await token.transfer.call(to, tokens(2), { from: from }))
-						assert.isTrue(await token.transfer.call(to, tokens(3), { from: from }))
+						assert.isTrue(await contract.transfer.call(to, tokens(1), { from: from }))
+						assert.isTrue(await contract.transfer.call(to, tokens(2), { from: from }))
+						assert.isTrue(await contract.transfer.call(to, tokens(3), { from: from }))
 
-						await token.transfer(to, tokens(1), { from: from })
-						assert.isTrue(await token.transfer.call(to, tokens(1), { from: from }))
-						assert.isTrue(await token.transfer.call(to, tokens(2), { from: from }))
+						await contract.transfer(to, tokens(1), { from: from })
+						assert.isTrue(await contract.transfer.call(to, tokens(1), { from: from }))
+						assert.isTrue(await contract.transfer.call(to, tokens(2), { from: from }))
 					})
 
 					it('should revert when trying to transfer something while having nothing', async function () {
-						await expectRevertOrFail(token.transfer(to, tokens(1), { from: from }))
+						await expectRevertOrFail(contract.transfer(to, tokens(1), { from: from }))
 					})
 
 					it('should revert when trying to transfer more than balance', async function () {
 						await purchase(from, tokens(3))
-						await expectRevertOrFail(token.transfer(to, tokens(4), { from: from }))
+						await expectRevertOrFail(contract.transfer(to, tokens(4), { from: from }))
 
-						await token.transfer('0x1', tokens(1), { from: from })
-						await expectRevertOrFail(token.transfer(to, tokens(3), { from: from }))
+						await contract.transfer('0x1', tokens(1), { from: from })
+						await expectRevertOrFail(contract.transfer(to, tokens(3), { from: from }))
 					})
 
 					it('should not affect totalSupply', async function () {
 						await purchase(from, tokens(3))
-						let supply1 = await token.totalSupply.call()
-						await token.transfer(to, tokens(3), { from: from })
-						let supply2 = await token.totalSupply.call()
+						let supply1 = await contract.totalSupply.call()
+						await contract.transfer(to, tokens(3), { from: from })
+						let supply2 = await contract.totalSupply.call()
 						expect(supply2).to.be.be.bignumber.equal(supply1)
 					})
 
 					it('should update balances accordingly', async function () {
 						await purchase(from, tokens(3))
-						let fromBalance1 = await token.balanceOf.call(from)
-						let toBalance1 = await token.balanceOf.call(to)
+						let fromBalance1 = await contract.balanceOf.call(from)
+						let toBalance1 = await contract.balanceOf.call(to)
 
-						await token.transfer(to, tokens(1), { from: from })
-						let fromBalance2 = await token.balanceOf.call(from)
-						let toBalance2 = await token.balanceOf.call(to)
+						await contract.transfer(to, tokens(1), { from: from })
+						let fromBalance2 = await contract.balanceOf.call(from)
+						let toBalance2 = await contract.balanceOf.call(to)
 
 						if (from == to) {
 							expect(fromBalance2).to.be.bignumber.equal(fromBalance1)
@@ -309,9 +311,9 @@ export default function suite(options) {
 							expect(toBalance2).to.be.bignumber.equal(toBalance1.plus(tokens(1)))
 						}
 
-						await token.transfer(to, tokens(2), { from: from })
-						let fromBalance3 = await token.balanceOf.call(from)
-						let toBalance3 = await token.balanceOf.call(to)
+						await contract.transfer(to, tokens(2), { from: from })
+						let fromBalance3 = await contract.balanceOf.call(from)
+						let toBalance3 = await contract.balanceOf.call(to)
 
 						if (from == to) {
 							expect(fromBalance3).to.be.bignumber.equal(fromBalance2)
@@ -337,7 +339,7 @@ export default function suite(options) {
 					await purchase(from, amount)
 				}
 
-				let result = await token.transfer(to, amount, { from: from })
+				let result = await contract.transfer(to, amount, { from: from })
 				let log = result.logs[0]
 				assert.equal(log.event, 'Transfer')
 				assert.equal(log.args.from, from)
@@ -354,8 +356,8 @@ export default function suite(options) {
 
 			it('should revert when trying to transfer while not allowed at all', async function () {
 				await purchase(alice, tokens(3))
-				await expectRevertOrFail(token.transferFrom(alice, bob, tokens(1), { from: bob }))
-				await expectRevertOrFail(token.transferFrom(alice, charles, tokens(1), { from: bob }))
+				await expectRevertOrFail(contract.transferFrom(alice, bob, tokens(1), { from: bob }))
+				await expectRevertOrFail(contract.transferFrom(alice, charles, tokens(1), { from: bob }))
 			})
 
 			it('should fire Transfer event when transferring amount of 0 and sender is not approved', async function () {
@@ -366,60 +368,60 @@ export default function suite(options) {
 				describe(name, function () {
 					beforeEach(async function () {
 						// by default approve sender (via) to transfer
-						await token.approve(via, tokens(3), { from: from })
+						await contract.approve(via, tokens(3), { from: from })
 					})
 
 					it('should return true when called with amount of 0 and sender is approved', async function () {
-						assert.isTrue(await token.transferFrom.call(from, to, 0, { from: via }))
+						assert.isTrue(await contract.transferFrom.call(from, to, 0, { from: via }))
 					})
 
 					it('should return true when called with amount of 0 and sender is not approved', async function () {
-						assert.isTrue(await token.transferFrom.call(to, from, 0, { from: via }))
+						assert.isTrue(await contract.transferFrom.call(to, from, 0, { from: via }))
 					})
 
 					it('should return true when transfer can be made, false otherwise', async function () {
 						await purchase(from, tokens(3))
-						assert.isTrue(await token.transferFrom.call(from, to, tokens(1), { from: via }))
-						assert.isTrue(await token.transferFrom.call(from, to, tokens(2), { from: via }))
-						assert.isTrue(await token.transferFrom.call(from, to, tokens(3), { from: via }))
+						assert.isTrue(await contract.transferFrom.call(from, to, tokens(1), { from: via }))
+						assert.isTrue(await contract.transferFrom.call(from, to, tokens(2), { from: via }))
+						assert.isTrue(await contract.transferFrom.call(from, to, tokens(3), { from: via }))
 
-						await token.transferFrom(from, to, tokens(1), { from: via })
-						assert.isTrue(await token.transferFrom.call(from, to, tokens(1), { from: via }))
-						assert.isTrue(await token.transferFrom.call(from, to, tokens(2), { from: via }))
+						await contract.transferFrom(from, to, tokens(1), { from: via })
+						assert.isTrue(await contract.transferFrom.call(from, to, tokens(1), { from: via }))
+						assert.isTrue(await contract.transferFrom.call(from, to, tokens(2), { from: via }))
 					})
 
 					it('should revert when trying to transfer something while _from having nothing', async function () {
-						await expectRevertOrFail(token.transferFrom(from, to, tokens(1), { from: via }))
+						await expectRevertOrFail(contract.transferFrom(from, to, tokens(1), { from: via }))
 					})
 
 					it('should revert when trying to transfer more than balance of _from', async function () {
 						await purchase(from, tokens(2))
-						await expectRevertOrFail(token.transferFrom(from, to, tokens(3), { from: via }))
+						await expectRevertOrFail(contract.transferFrom(from, to, tokens(3), { from: via }))
 					})
 
 					it('should revert when trying to transfer more than allowed', async function () {
 						await purchase(from, tokens(4))
-						await expectRevertOrFail(token.transferFrom(from, to, tokens(4), { from: via }))
+						await expectRevertOrFail(contract.transferFrom(from, to, tokens(4), { from: via }))
 					})
 
 					it('should not affect totalSupply', async function () {
 						await purchase(from, tokens(3))
-						let supply1 = await token.totalSupply.call()
-						await token.transferFrom(from, to, tokens(3), { from: via })
-						let supply2 = await token.totalSupply.call()
+						let supply1 = await contract.totalSupply.call()
+						await contract.transferFrom(from, to, tokens(3), { from: via })
+						let supply2 = await contract.totalSupply.call()
 						expect(supply2).to.be.be.bignumber.equal(supply1)
 					})
 
 					it('should update balances accordingly', async function () {
 						await purchase(from, tokens(3))
-						let fromBalance1 = await token.balanceOf.call(from)
-						let viaBalance1 = await token.balanceOf.call(via)
-						let toBalance1 = await token.balanceOf.call(to)
+						let fromBalance1 = await contract.balanceOf.call(from)
+						let viaBalance1 = await contract.balanceOf.call(via)
+						let toBalance1 = await contract.balanceOf.call(to)
 
-						await token.transferFrom(from, to, tokens(1), { from: via })
-						let fromBalance2 = await token.balanceOf.call(from)
-						let viaBalance2 = await token.balanceOf.call(via)
-						let toBalance2 = await token.balanceOf.call(to)
+						await contract.transferFrom(from, to, tokens(1), { from: via })
+						let fromBalance2 = await contract.balanceOf.call(from)
+						let viaBalance2 = await contract.balanceOf.call(via)
+						let toBalance2 = await contract.balanceOf.call(to)
 
 						if (from == to) {
 							expect(fromBalance2).to.be.bignumber.equal(fromBalance1)
@@ -433,10 +435,10 @@ export default function suite(options) {
 							expect(viaBalance2).to.be.bignumber.equal(viaBalance1)
 						}
 
-						await token.transferFrom(from, to, tokens(2), { from: via })
-						let fromBalance3 = await token.balanceOf.call(from)
-						let viaBalance3 = await token.balanceOf.call(via)
-						let toBalance3 = await token.balanceOf.call(to)
+						await contract.transferFrom(from, to, tokens(2), { from: via })
+						let fromBalance3 = await contract.balanceOf.call(from)
+						let viaBalance3 = await contract.balanceOf.call(via)
+						let toBalance3 = await contract.balanceOf.call(to)
 
 						if (from == to) {
 							expect(fromBalance3).to.be.bignumber.equal(fromBalance2)
@@ -453,12 +455,12 @@ export default function suite(options) {
 
 					it('should update allowances accordingly', async function () {
 						await purchase(from, tokens(3))
-						let viaAllowance1 = await token.allowance.call(from, via)
-						let toAllowance1 = await token.allowance.call(from, to)
+						let viaAllowance1 = await contract.allowance.call(from, via)
+						let toAllowance1 = await contract.allowance.call(from, to)
 
-						await token.transferFrom(from, to, tokens(2), { from: via })
-						let viaAllowance2 = await token.allowance.call(from, via)
-						let toAllowance2 = await token.allowance.call(from, to)
+						await contract.transferFrom(from, to, tokens(2), { from: via })
+						let viaAllowance2 = await contract.allowance.call(from, via)
+						let toAllowance2 = await contract.allowance.call(from, to)
 
 						expect(viaAllowance2).to.be.bignumber.equal(viaAllowance1.minus(tokens(2)))
 
@@ -466,9 +468,9 @@ export default function suite(options) {
 							expect(toAllowance2).to.be.bignumber.equal(toAllowance1)
 						}
 
-						await token.transferFrom(from, to, tokens(1), { from: via })
-						let viaAllowance3 = await token.allowance.call(from, via)
-						let toAllowance3 = await token.allowance.call(from, to)
+						await contract.transferFrom(from, to, tokens(1), { from: via })
+						let viaAllowance3 = await contract.allowance.call(from, via)
+						let toAllowance3 = await contract.allowance.call(from, to)
 
 						expect(viaAllowance3).to.be.bignumber.equal(viaAllowance2.minus(tokens(1)))
 
@@ -492,7 +494,7 @@ export default function suite(options) {
 					await purchase(from, amount)
 				}
 
-				let result = await token.transferFrom(from, to, amount, { from: via })
+				let result = await contract.transferFrom(from, to, amount, { from: via })
 				let log = result.logs[0]
 				assert.equal(log.event, 'Transfer')
 				assert.equal(log.args.from, from)
@@ -506,7 +508,7 @@ export default function suite(options) {
 		describe('name()', function () {
 			if (typeof options.name !== 'undefined') {
 				it("should return '" + options.name + "'", async function () {
-					assert.equal(await token.name.call(), options.name)
+					assert.equal(await contract.name.call(), options.name)
 				})
 			}
 		})
@@ -514,7 +516,7 @@ export default function suite(options) {
 		describe('symbol()', function () {
 			if (typeof options.symbol !== 'undefined') {
 				it("should return '" + options.symbol + "'", async function () {
-					assert.equal(await token.symbol.call(), options.symbol)
+					assert.equal(await contract.symbol.call(), options.symbol)
 				})
 			}
 		})
@@ -522,7 +524,7 @@ export default function suite(options) {
 		describe('decimals()', function () {
 			if (typeof options.decimals !== 'undefined') {
 				it("should return '" + options.decimals + "'", async function () {
-					expect(await token.decimals.call()).to.be.bignumber.equal(options.decimals)
+					expect(await contract.decimals.call()).to.be.bignumber.equal(options.decimals)
 				})
 			}
 		})
@@ -532,28 +534,28 @@ export default function suite(options) {
 		describe('approvals', function () {
 			describe('increaseApproval(_spender, _addedValue)', function () {
 				it('should return true when increasing approval', async function () {
-					assert.isTrue(await token.increaseApproval.call(bob, 0, { from: alice }))
-					assert.isTrue(await token.increaseApproval.call(bob, uintMax, { from: alice }))
+					assert.isTrue(await contract.increaseApproval.call(bob, 0, { from: alice }))
+					assert.isTrue(await contract.increaseApproval.call(bob, uintMax, { from: alice }))
 
-					await token.increaseApproval(bob, tokens(3), { from: alice })
-					assert.isTrue(await token.increaseApproval.call(bob, 0, { from: alice }))
-					assert.isTrue(await token.increaseApproval.call(bob, tokens(3), { from: alice }))
+					await contract.increaseApproval(bob, tokens(3), { from: alice })
+					assert.isTrue(await contract.increaseApproval.call(bob, 0, { from: alice }))
+					assert.isTrue(await contract.increaseApproval.call(bob, tokens(3), { from: alice }))
 				})
 
 				it('should revert when approval cannot be increased', async function () {
-					await token.increaseApproval(bob, tokens(1), { from: alice })
-					await expectRevertOrFail(token.increaseApproval(bob, uintMax, { from: alice }))
+					await contract.increaseApproval(bob, tokens(1), { from: alice })
+					await expectRevertOrFail(contract.increaseApproval(bob, uintMax, { from: alice }))
 				})
 
 				it('should update allowance accordingly', async function () {
-					await token.increaseApproval(bob, tokens(1), { from: alice })
-					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(tokens(1))
+					await contract.increaseApproval(bob, tokens(1), { from: alice })
+					expect(await contract.allowance(alice, bob)).to.be.bignumber.equal(tokens(1))
 
-					await token.increaseApproval(bob, tokens(2), { from: alice })
-					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(tokens(3))
+					await contract.increaseApproval(bob, tokens(2), { from: alice })
+					expect(await contract.allowance(alice, bob)).to.be.bignumber.equal(tokens(3))
 
-					await token.increaseApproval(bob, 0, { from: alice })
-					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(tokens(3))
+					await contract.increaseApproval(bob, 0, { from: alice })
+					expect(await contract.allowance(alice, bob)).to.be.bignumber.equal(tokens(3))
 				})
 
 				it('should fire Approval event', async function () {
@@ -564,12 +566,12 @@ export default function suite(options) {
 				it('should fire Approval even when allowance did not change', async function () {
 					await testApprovalEvent(alice, bob, 0, 0)
 
-					await token.increaseApproval(bob, tokens(3), { from: alice })
+					await contract.increaseApproval(bob, tokens(3), { from: alice })
 					await testApprovalEvent(alice, bob, tokens(3), 0)
 				})
 
 				async function testApprovalEvent(from, to, fromAmount, byAmount) {
-					let result = await token.increaseApproval(to, byAmount, { from: from })
+					let result = await contract.increaseApproval(to, byAmount, { from: from })
 					let log = result.logs[0]
 					assert.equal(log.event, 'Approval')
 					assert.equal(log.args.owner, from)
@@ -580,27 +582,27 @@ export default function suite(options) {
 
 			describe('decreaseApproval(_spender, _subtractedValue)', function () {
 				beforeEach(async function () {
-					await token.approve(bob, tokens(3), { from: alice })
+					await contract.approve(bob, tokens(3), { from: alice })
 				})
 
 				it('should return true when decreasing approval', async function () {
-					assert.isTrue(await token.decreaseApproval.call(bob, 0, { from: alice }))
-					assert.isTrue(await token.decreaseApproval.call(bob, tokens(3), { from: alice }))
+					assert.isTrue(await contract.decreaseApproval.call(bob, 0, { from: alice }))
+					assert.isTrue(await contract.decreaseApproval.call(bob, tokens(3), { from: alice }))
 				})
 
 				it('should return true when approval cannot be decreased', async function () {
-					assert.isTrue(await token.decreaseApproval.call(bob, uintMax, { from: alice }))
+					assert.isTrue(await contract.decreaseApproval.call(bob, uintMax, { from: alice }))
 				})
 
 				it('should update allowance accordingly', async function () {
-					await token.decreaseApproval(bob, tokens(1), { from: alice })
-					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(tokens(2))
+					await contract.decreaseApproval(bob, tokens(1), { from: alice })
+					expect(await contract.allowance(alice, bob)).to.be.bignumber.equal(tokens(2))
 
-					await token.decreaseApproval(bob, tokens(3), { from: alice })
-					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(0)
+					await contract.decreaseApproval(bob, tokens(3), { from: alice })
+					expect(await contract.allowance(alice, bob)).to.be.bignumber.equal(0)
 
-					await token.decreaseApproval(bob, 0, { from: alice })
-					expect(await token.allowance(alice, bob)).to.be.bignumber.equal(0)
+					await contract.decreaseApproval(bob, 0, { from: alice })
+					expect(await contract.allowance(alice, bob)).to.be.bignumber.equal(0)
 				})
 
 				it('should fire Approval event', async function () {
@@ -611,12 +613,12 @@ export default function suite(options) {
 				it('should fire Approval even when allowance did not change', async function () {
 					await testApprovalEvent(alice, bob, tokens(3), 0)
 
-					await token.decreaseApproval(bob, tokens(3), { from: alice })
+					await contract.decreaseApproval(bob, tokens(3), { from: alice })
 					await testApprovalEvent(alice, bob, 0, 0)
 				})
 
 				async function testApprovalEvent(from, to, fromAmount, byAmount) {
-					let result = await token.decreaseApproval(to, byAmount, { from: from })
+					let result = await contract.decreaseApproval(to, byAmount, { from: from })
 					let log = result.logs[0]
 					assert.equal(log.event, 'Approval')
 					assert.equal(log.args.owner, from)
