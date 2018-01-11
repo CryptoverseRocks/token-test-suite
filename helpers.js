@@ -1,6 +1,29 @@
 'use strict'
 
 /**
+ * Converts given value to BigNumber object if it is number or string. Otherwise defaultValue is
+ * returned in case given value is not truthy.
+ *
+ * @param {number|string|BigNumber|null} number
+ * @param {number|string|BigNumber|null} [defaultValue]
+ * @returns {BigNumber|null}
+ */
+export function toBigNumber(number, defaultValue = null) {
+	if (typeof number === 'string' || typeof number === 'number') {
+		return new web3.BigNumber(number)
+	}
+	else if (number) {
+		return number
+	}
+	else if (defaultValue == null) {
+		return null
+	}
+	else {
+		return new web3.BigNumber(defaultValue)
+	}
+}
+
+/**
  * Asserts that given promise will throw because of revert().
  * @param {Promise} promise
  */
