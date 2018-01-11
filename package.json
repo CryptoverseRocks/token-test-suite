@@ -1,14 +1,18 @@
 {
-  "name": "token-test-suite",
-  "version": "0.0.1",
-  "description": "ERC-20 Token Standard Test Suite.",
-  "devDependencies": {
-    "babel-polyfill": "^6.23.0",
-    "babel-preset-es2015": "^6.18.0",
-    "babel-preset-stage-2": "^6.18.0",
-    "babel-preset-stage-3": "^6.17.0",
-    "chai": "^4.1.2",
-    "chai-bignumber": "^2.0.2"
-  },
-  "license": "UNLICENSED"
+	"name": "token-test-suite",
+	"author": "CryptoverseRocks",
+	"contributors": [
+		"Michal Novák (https://www.weborama.cz/)"
+	],
+	"version": "0.0.1",
+	"description": "ERC-20 Token Test Suite.",
+	"devDependencies": {
+		"babel-polyfill": "^6.23.0",
+		"babel-preset-es2015": "^6.18.0",
+		"babel-preset-stage-2": "^6.18.0",
+		"babel-preset-stage-3": "^6.17.0",
+		"chai": "^4.1.2",
+		"chai-bignumber": "^2.0.2"
+	},
+	"license": "MIT"
 }
