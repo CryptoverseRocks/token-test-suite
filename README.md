@@ -6,7 +6,24 @@ Package to test your ERC-20 token implementation from your truffle projects.
 Getting Started
 ---------------
 
-Example test suite initialization boilerplate (`test/MyToken.erc20.js`):
+Add to your `package.json`:
+
+```
+{
+	"devDependencies": {
+		// ...
+		"token-test-suite": "git+ssh://git@github.com:CryptoverseRocks/token-test-suite.git"
+	},
+}
+```
+
+Install the package:
+
+```
+npm install
+```
+
+Add test suite initialization boilerplate. Create the file `test/MyToken.erc20.js`:
 
 ```js
 import suite from '../node_modules/token-test-suite/suite'
@@ -53,6 +70,10 @@ Then run:
 ```
 truffle test ./test/MyToken.erc20.js
 ```
+
+You should get:
+
+![Output of the test run](./assets/test-run.png?raw=true)
 
 License
 -------
