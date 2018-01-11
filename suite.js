@@ -14,8 +14,10 @@ const expect = require('chai')
  *   Contract owner is expected to be accounts[0].
  * @property {TokenCreateCallback} create
  *   Callback to create token contract with.
- * @property {TokenPurchaseCallback} purchase
- *   Callback to purchase tokens with.
+ * @property {TokenTransferOrMintCallback} [transfer]
+ *   Callback to transfer tokens with. Tokens must not be transferred from the account of index 1 or higher.
+ * @property {TokenTransferOrMintCallback} [mint]
+ *   Callback to mint tokens with.
  * @property {BigNumber|number} [initialSupply]
  *   The initial token supply. Defaults to 0.
  * @property {[string, BigNumber|number][]} initialBalances
@@ -49,8 +51,8 @@ const expect = require('chai')
 
 /**
  * The token purchase callback.
- * @callback TokenPurchaseCallback
- * @param {Object} token The token created by TokenCreateCallback to purchase tokens of.
+ * @callback TokenTransferOrMintCallback
+ * @param {Object} token The token created by TokenCreateCallback to transfer tokens of.
  * @param {string} to Account of the beneficiary.
  * @param {BigNumber|number} amount The amount of the tokens to purchase.
  */
@@ -70,7 +72,18 @@ export default function suite(options) {
 	const initialBalances = options.initialBalances || []
 	const initialAllowances = options.initialAllowances || []
 	const create = options.create
-	const purchase = async function (to, amount) { return await options.purchase(contract, to, amount) }
+
+	let creditIsMinting = true
+	let credit = async function (to, amount) {
+		if (options.mint) {
+			creditIsMinting = true
+			return await options.mint(contract, to, amount)
+		}
+		else {
+			creditIsMinting = false
+			return await options.transfer(contract, to, amount)
+		}
+	}
 
 	// setup
 	const tokens = function(amount) { return new web3.BigNumber(amount).shift(decimals) }
@@ -105,14 +118,20 @@ export default function suite(options) {
 			})
 
 			it('should return the correct supply', async function () {
-				await purchase(alice, tokens(1))
-				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(1)))
+				await credit(alice, tokens(1))
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(
+					creditIsMinting ? initialSupply.plus(tokens(1)) : initialSupply
+				)
 
-				await purchase(alice, tokens(2))
-				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(3)))
+				await credit(alice, tokens(2))
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(
+					creditIsMinting ? initialSupply.plus(tokens(3)) : initialSupply
+				)
 
-				await purchase(bob, tokens(3))
-				expect(await contract.totalSupply.call()).to.be.bignumber.equal(initialSupply.plus(tokens(6)))
+				await credit(bob, tokens(3))
+				expect(await contract.totalSupply.call()).to.be.bignumber.equal(
+					creditIsMinting ? initialSupply.plus(tokens(6)) : initialSupply
+				)
 			})
 		})
 
@@ -126,13 +145,13 @@ export default function suite(options) {
 			})
 
 			it('should return the correct balances', async function () {
-				await purchase(alice, tokens(1))
+				await credit(alice, tokens(1))
 				expect(await contract.balanceOf.call(alice)).to.be.bignumber.equal(tokens(1))
 
-				await purchase(alice, tokens(2))
+				await credit(alice, tokens(2))
 				expect(await contract.balanceOf.call(alice)).to.be.bignumber.equal(tokens(3))
 
-				await purchase(bob, tokens(3))
+				await credit(bob, tokens(3))
 				expect(await contract.balanceOf.call(bob)).to.be.bignumber.equal(tokens(3))
 			})
 		})
@@ -264,7 +283,7 @@ export default function suite(options) {
 					})
 
 					it('should return true when transfer can be made, false otherwise', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						assert.isTrue(await contract.transfer.call(to, tokens(1), { from: from }))
 						assert.isTrue(await contract.transfer.call(to, tokens(2), { from: from }))
 						assert.isTrue(await contract.transfer.call(to, tokens(3), { from: from }))
@@ -279,7 +298,7 @@ export default function suite(options) {
 					})
 
 					it('should revert when trying to transfer more than balance', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						await expectRevertOrFail(contract.transfer(to, tokens(4), { from: from }))
 
 						await contract.transfer('0x1', tokens(1), { from: from })
@@ -287,7 +306,7 @@ export default function suite(options) {
 					})
 
 					it('should not affect totalSupply', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						let supply1 = await contract.totalSupply.call()
 						await contract.transfer(to, tokens(3), { from: from })
 						let supply2 = await contract.totalSupply.call()
@@ -295,7 +314,7 @@ export default function suite(options) {
 					})
 
 					it('should update balances accordingly', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						let fromBalance1 = await contract.balanceOf.call(from)
 						let toBalance1 = await contract.balanceOf.call(to)
 
@@ -336,7 +355,7 @@ export default function suite(options) {
 
 			async function testTransferEvent(from, to, amount) {
 				if (amount > 0) {
-					await purchase(from, amount)
+					await credit(from, amount)
 				}
 
 				let result = await contract.transfer(to, amount, { from: from })
@@ -355,7 +374,7 @@ export default function suite(options) {
 			describeIt(when('_from == _to and _to == sender'), alice, alice, alice)
 
 			it('should revert when trying to transfer while not allowed at all', async function () {
-				await purchase(alice, tokens(3))
+				await credit(alice, tokens(3))
 				await expectRevertOrFail(contract.transferFrom(alice, bob, tokens(1), { from: bob }))
 				await expectRevertOrFail(contract.transferFrom(alice, charles, tokens(1), { from: bob }))
 			})
@@ -380,7 +399,7 @@ export default function suite(options) {
 					})
 
 					it('should return true when transfer can be made, false otherwise', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						assert.isTrue(await contract.transferFrom.call(from, to, tokens(1), { from: via }))
 						assert.isTrue(await contract.transferFrom.call(from, to, tokens(2), { from: via }))
 						assert.isTrue(await contract.transferFrom.call(from, to, tokens(3), { from: via }))
@@ -395,17 +414,17 @@ export default function suite(options) {
 					})
 
 					it('should revert when trying to transfer more than balance of _from', async function () {
-						await purchase(from, tokens(2))
+						await credit(from, tokens(2))
 						await expectRevertOrFail(contract.transferFrom(from, to, tokens(3), { from: via }))
 					})
 
 					it('should revert when trying to transfer more than allowed', async function () {
-						await purchase(from, tokens(4))
+						await credit(from, tokens(4))
 						await expectRevertOrFail(contract.transferFrom(from, to, tokens(4), { from: via }))
 					})
 
 					it('should not affect totalSupply', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						let supply1 = await contract.totalSupply.call()
 						await contract.transferFrom(from, to, tokens(3), { from: via })
 						let supply2 = await contract.totalSupply.call()
@@ -413,7 +432,7 @@ export default function suite(options) {
 					})
 
 					it('should update balances accordingly', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						let fromBalance1 = await contract.balanceOf.call(from)
 						let viaBalance1 = await contract.balanceOf.call(via)
 						let toBalance1 = await contract.balanceOf.call(to)
@@ -454,7 +473,7 @@ export default function suite(options) {
 					})
 
 					it('should update allowances accordingly', async function () {
-						await purchase(from, tokens(3))
+						await credit(from, tokens(3))
 						let viaAllowance1 = await contract.allowance.call(from, via)
 						let toAllowance1 = await contract.allowance.call(from, to)
 
@@ -491,7 +510,7 @@ export default function suite(options) {
 
 			async function testTransferEvent(from, via, to, amount) {
 				if (amount > 0) {
-					await purchase(from, amount)
+					await credit(from, amount)
 				}
 
 				let result = await contract.transferFrom(from, to, amount, { from: via })
