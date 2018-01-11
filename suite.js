@@ -1,6 +1,6 @@
 'use strict'
 
-import { expectRevertOrFail } from './helpers'
+import { expectRevertOrFail, toBigNumber } from './helpers'
 
 const expect = require('chai')
 	.use(require('chai-bignumber')(web3.BigNumber))
@@ -66,7 +66,7 @@ export default function suite(options) {
 	const accounts = options.accounts
 
 	// configure
-	const initialSupply = options.initialSupply || new web3.BigNumber(0)
+	const initialSupply = toBigNumber(options.initialSupply, 0)
 	const initialBalances = options.initialBalances || []
 	const initialAllowances = options.initialAllowances || []
 	const create = options.create
