@@ -97,7 +97,7 @@ export default function suite(options) {
 
 	beforeEach(async function () {
 		contract = await create()
-		decimals = await contract.decimals.call()
+		decimals = (contract.decimals ? await contract.decimals.call() : 0)
 		if (options.beforeEach) {
 			await options.beforeEach(contract)
 		}
