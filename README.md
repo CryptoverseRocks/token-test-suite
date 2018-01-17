@@ -12,7 +12,7 @@ Add to your `package.json`:
 {
 	"devDependencies": {
 		// ...
-		"token-test-suite": "git+ssh://git@github.com:CryptoverseRocks/token-test-suite.git"
+		"token-test-suite": "https://github.com/CryptoverseRocks/token-test-suite.git"
 	},
 }
 ```
