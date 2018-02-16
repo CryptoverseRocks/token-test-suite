@@ -64,7 +64,7 @@ const expect = require('chai')
  *
  * @param {SuiteOptions} options
  */
-export default function suite(options) {
+module.exports = function (options) {
 	const accounts = options.accounts
 
 	// configure
@@ -86,7 +86,7 @@ export default function suite(options) {
 	}
 
 	// setup
-	const tokens = function(amount) { return new web3.BigNumber(amount).shift(decimals) }
+	const tokens = function (amount) { return new web3.BigNumber(amount).shift(decimals) }
 	const uintMax = new web3.BigNumber(2).pow(256).minus(1)
 	const alice = accounts[1]
 	const bob = accounts[2]
