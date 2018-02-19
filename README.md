@@ -3,10 +3,13 @@ ERC-20 Token Test Suite
 
 Package to test your ERC-20 token implementation from your truffle projects.
 
+This package offers the reusable tests for your final ERC-20 token implementations. This suite will
+tests whether your token conforms to the ERC-20 standard.
+
 Installation
 ------------
 
-```
+```shell
 npm install --save-dev token-test-suite
 ```
 
@@ -53,20 +56,28 @@ let options = {
 	initialAllowances: [
 		[accounts[0], accounts[1], 0]
 	]
-}
+};
 
 contract('MyToken', function (accounts) { suite(options) });
 ```
 
 Then run:
 
-```
+```shell
 truffle test ./test/MyToken.erc20.js
 ```
 
 You should get:
 
 ![Output of the test run](./assets/test-run.png?raw=true)
+
+More
+----
+
+The library won't test any additional logic your token might implement. It expects "classical" token
+behavior. All test assume, that tokens are fully transferrable. If you implement vesting period or
+freeze times, maybe specifying before/after custom callbacks in options might help. If not, perhaps
+the standardized tests are not for you and you might just copy/paste and customize them.
 
 License
 -------
