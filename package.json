@@ -5,7 +5,7 @@
 	"contributors": [
 		"Michal Novák (https://www.weborama.cz/)"
 	],
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"license": "MIT",
 	"main": "lib/suite.js",
 	"repository": "github:CryptoverseRocks/token-test-suite",
