@@ -5,9 +5,10 @@
 	"contributors": [
 		"Michal Novák (https://www.weborama.cz/)"
 	],
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "MIT",
 	"main": "lib/suite.js",
+	"repository": "github:CryptoverseRocks/token-test-suite",
 	"devDependencies": {
 		"babel-cli": "^6.26.0",
 		"babel-core": "^6.26.0",
