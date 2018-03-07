@@ -18,49 +18,51 @@ npm install --save-dev token-test-suite
 Getting Started
 ---------------
 
-Add test suite initialization boilerplate. Create the file `test/MyToken.erc20.js`:
+The test suite assumes it is ran from the truffle's `contract` function ([see docs](http://truffleframework.com/docs/getting_started/javascript-tests)). That ensures that `mocha` and `chai` is visible in the test suite.
+
+Create the file `test/MyToken.erc20.js` and just add initialization boilerplate. It should look like this:
 
 ```js
-var suite = require('../node_modules/token-test-suite/lib/suite');
-// or as a ES6 module:
-// import suite from '../node_modules/token-test-suite/lib/suite';
-
+const suite = require('../node_modules/token-test-suite/lib/suite');
 const MyToken = artifacts.require('MyToken');
-let options = {
-	// accounts to test with, accounts[0] being the contract owner
-	accounts: accounts,
 
-	// factory method to create new token contract
-	create: async function () {
-		return await MyToken.new();
-	},
+contract('MyToken', function (accounts) {
+	let options = {
+		// accounts to test with, accounts[0] being the contract owner
+		accounts: accounts,
 
-	// factory callbacks to mint the tokens
-	// use "transfer" instead of "mint" for non-mintable tokens
-	mint: async function (token, to, amount) {
-		return await token.transfer(to, amount, { from: accounts[0] });
-	},
+		// factory method to create new token contract
+		create: async function () {
+			return await MyToken.new();
+		},
 
-	// optional:
-	// also test the increaseApproval/decreaseApproval methods (not part of the ERC-20 standard)
-	increaseDecreaseApproval: true,
+		// factory callbacks to mint the tokens
+		// use "transfer" instead of "mint" for non-mintable tokens
+		mint: async function (token, to, amount) {
+			return await token.transfer(to, amount, { from: accounts[0] });
+		},
 
-	// token info to test
-	name: 'MyToken',
-	symbol: 'MTK',
-	decimals: 18,
+		// optional:
+		// also test the increaseApproval/decreaseApproval methods (not part of the ERC-20 standard)
+		increaseDecreaseApproval: true,
 
-	// initial state to test
-	initialSupply: 100,
-	initialBalances: [
-		[accounts[0], 100]
-	],
-	initialAllowances: [
-		[accounts[0], accounts[1], 0]
-	]
-};
+		// token info to test
+		name: 'MyToken',
+		symbol: 'MTK',
+		decimals: 18,
 
-contract('MyToken', function (accounts) { suite(options) });
+		// initial state to test
+		initialSupply: 100,
+		initialBalances: [
+			[accounts[0], 100]
+		],
+		initialAllowances: [
+			[accounts[0], accounts[1], 0]
+		]
+	};
+
+	suite(options);
+});
 ```
 
 Then run:
