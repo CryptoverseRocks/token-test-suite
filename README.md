@@ -3,6 +3,8 @@ ERC-20 Token Test Suite
 
 [![Build Status](https://travis-ci.org/CryptoverseRocks/token-test-suite.svg)](https://travis-ci.org/CryptoverseRocks/token-test-suite)
 
+**This repository is no longer maintained**. Consider switching to https://github.com/mancze/token-test-suite.
+
 Package to test your ERC-20 token implementation from your truffle projects.
 
 This package offers the reusable tests for your final ERC-20 token implementations. This suite will
